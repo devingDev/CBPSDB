@@ -10,12 +10,19 @@
 #include "apps.hpp"
 #include "draw_font.hpp"
 
+const char* TITLE = "CBPS HOMEBREW BROWSER";
+const char* COPYRIGHT = " 2020 by CBPS";
+
+
+vita2d_font* testSans;
+
 int main(int argc, char *argv[]) {
-	loadFonts();
+	int loadedFonts = loadFonts();
 	loadAppsJson();
 	LoadAppsSmart();
 
-	vita2d_init();
+
+	vita2d_init_advanced(8 * 1024 * 1024);
 	vita2d_set_clear_color(RGBA8(0xC3, 0xC3, 0xC3, 0xFF));
 	
 	vita2d_texture *appicon = vita2d_load_PNG_file("app0:assets/APP_ICON.png");
@@ -26,8 +33,11 @@ int main(int argc, char *argv[]) {
 	vita2d_texture *cross = vita2d_load_PNG_file("app0:assets/PSVita/Vita_Cross.png");
 	vita2d_texture *circle = vita2d_load_PNG_file("app0:assets/PSVita/Vita_Circle.png");
 
+	testSans = vita2d_load_font_file("app0:assets/ldfsans.ttf");
+
 	setup_side_menu();
 	setup_app_list();
+	
 
 	//vita2d_font * commiesans = vita2d_load_font_file("app0:assets/LDFCOMMIUNISMSANS.ttf");
 
@@ -61,17 +71,27 @@ int main(int argc, char *argv[]) {
 		
 		//vita2d_draw_line(0, 107, DISPLAY_WIDTH, 107, RGBA8(255, 255, 255, 255));
 		
+		if(loadedFonts < 0){
+			vita2d_draw_rectangle(0,0,48,48, RGBA8(255,0,0,255));
+		}
 
-		vita2d_font_draw_text(commiesans, 273, 42, RGBA8(255,0,50,255), 31.0f, "CBPS HOMEBREW BROWSER");
-		vita2d_font_draw_text(commiesans, 45, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 12.0f, " 2020 by CBPS");
+		if(commiesans == NULL){
+			vita2d_draw_rectangle(0,48,48,48, RGBA8(255,255,0,255));
+		}
+
+		vita2d_font_draw_text(testSans, 273, 42, RGBA8(255,0,50,255), 31, TITLE );
+/* These don't work when using the included one : 
+	They work on vita3k thou 
+		vita2d_font_draw_text(commiesans, 45, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 12.0f, COPYRIGHT);
 
 		vita2d_font_draw_text(commiesans, 250, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Move around (list/categories)");
 		vita2d_font_draw_text(commiesans, 480, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Submit / Enter");
 		vita2d_font_draw_text(commiesans, 730, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Go back / Cancel");
-
+*/
 
 		vita2d_end_drawing();
 		vita2d_swap_buffers();
+		vita2d_wait_rendering_done();
 	}
 	
 	vita2d_fini();
@@ -83,6 +103,7 @@ int main(int argc, char *argv[]) {
 	vita2d_free_texture(dpad);
 	vita2d_free_texture(cross);
 	vita2d_free_texture(circle);
+	vita2d_free_font(testSans);
 	unloadFonts();
 
 	end_side_menu();

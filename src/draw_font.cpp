@@ -1,9 +1,12 @@
 #include "draw_font.hpp"
 
-vita2d_font * commiesans;
+vita2d_font *commiesans;
 
 int loadFonts(){
-	commiesans = vita2d_load_font_file("app0:assets/LDFCOMMIUNISMSANS.ttf");
+	commiesans = vita2d_load_font_file("app0:assets/ldfsans.ttf");
+    if(commiesans == NULL){
+        return -1;
+    }
     return 0;
 }
 

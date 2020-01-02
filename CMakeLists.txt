@@ -59,23 +59,29 @@ add_executable(${PROJECT_NAME}
 
 # Library to link to (drop the -l prefix). This will mostly be stubs.
 target_link_libraries(${PROJECT_NAME}
-  SceLibKernel_stub # this line is only for demonstration. It's not needed as
-                    # the most common stubs are automatically included.
+
 					vita2d
-          SceDisplay_stub
-          SceGxm_stub
-          SceSysmodule_stub
-          SceCtrl_stub
+          SceNet_stub
           ScePgf_stub
           ScePvf_stub
+          SceGxm_stub
+          SceHttp_stub
+          SceCtrl_stub
+          SceTouch_stub
+          SceNetCtl_stub
+          SceAppUtil_stub
+          SceDisplay_stub
+          SceLibKernel_stub
+          SceSysmodule_stub
+          ScePower_stub
           SceCommonDialog_stub
           SceRegistryMgr_stub
-          freetype
           png
           jpeg
-          z
-          m
+          freetype
           c
+          m
+          z
 )
 
 ## Create Vita files
@@ -97,7 +103,8 @@ vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
   FILE assets/HB_INFO.png assets/HB_INFO.png
   FILE assets/HB_SCROL.png assets/HB_SCROL.png
   FILE assets/HB_SCROL_BAR.png assets/HB_SCROL_BAR.png
-  FILE assets/LDFCOMMIUNISMSANS.ttf assets/LDFCOMMIUNISMSANS.ttf
+  FILE assets/ldfsans.ttf assets/ldfsans.ttf
+  FILE assets/whitney-bold.ttf assets/whitney-bold.ttf
   FILE assets/System_search_icon.png assets/System_search_icon.png
   FILE assets/PSVita/Vita_Bumper_Right.png assets/PSVita/Vita_Bumper_Right.png
   FILE assets/PSVita/Vita_Dpad.png assets/PSVita/Vita_Dpad.png
