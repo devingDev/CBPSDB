@@ -2,7 +2,6 @@
 #include <vita2d.h>
 #include "app_defines.hpp"
 #include "apps.hpp"
-#include "draw_font.hpp"
 
 vita2d_texture *bar;
 vita2d_texture *scroll;
@@ -10,6 +9,8 @@ vita2d_texture *scrollbar;
 vita2d_texture *dl;
 vita2d_texture *icon;
 vita2d_texture *info;
+
+vita2d_font *commieSansL;
 
 float y_offset = 0.0f;
 App * app;
@@ -23,6 +24,7 @@ void setup_app_list(){
 	dl = vita2d_load_PNG_file("app0:assets/HB_DL_.png");
 	icon = vita2d_load_PNG_file("app0:assets/HB_ICON.png");
 	info = vita2d_load_PNG_file("app0:assets/HB_INFO.png");
+	commieSansL = vita2d_load_font_file("app0:assets/LDFCOMMIUNISMSANS.ttf");
 
 	app = GetApp(0);
 	if(app != NULL){
@@ -40,8 +42,8 @@ void draw_app_list(){
     vita2d_draw_texture(bar, 236, 258 + y_offset);
     vita2d_draw_texture(bar, 236, 386 + y_offset);
 
-	//vita2d_font_draw_text(commiesans, 460, 160, RGBA8(255,255,255,255), 20.0f, nameOfAppTest.c_str());
-	//vita2d_font_draw_text(commiesans, 460, 180, RGBA8(255,255,255,255), 16.0f, descOfAppTest.c_str());
+	vita2d_font_draw_text(commieSansL, 460, 160, RGBA8(255,255,255,255), 20.0f, nameOfAppTest.c_str());
+	vita2d_font_draw_text(commieSansL, 460, 180, RGBA8(255,255,255,255), 16.0f, descOfAppTest.c_str());
 
 	y_offset -= 0.16f;
 }
@@ -53,4 +55,5 @@ void end_app_list(){
 	vita2d_free_texture(dl);
 	vita2d_free_texture(icon);
 	vita2d_free_texture(info);
+	vita2d_free_font(commieSansL);
 }

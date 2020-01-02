@@ -8,16 +8,12 @@
 #include "draw_side_menu.hpp"
 #include "draw_app_list.hpp"
 #include "apps.hpp"
-#include "draw_font.hpp"
 
 const char* TITLE = "CBPS HOMEBREW BROWSER";
 const char* COPYRIGHT = " 2020 by CBPS";
 
-
-vita2d_font* testSans;
-
 int main(int argc, char *argv[]) {
-	int loadedFonts = loadFonts();
+	//int loadedFonts = loadFonts();
 	loadAppsJson();
 	LoadAppsSmart();
 
@@ -33,13 +29,11 @@ int main(int argc, char *argv[]) {
 	vita2d_texture *cross = vita2d_load_PNG_file("app0:assets/PSVita/Vita_Cross.png");
 	vita2d_texture *circle = vita2d_load_PNG_file("app0:assets/PSVita/Vita_Circle.png");
 
-	testSans = vita2d_load_font_file("app0:assets/ldfsans.ttf");
-
 	setup_side_menu();
 	setup_app_list();
 	
 
-	//vita2d_font * commiesans = vita2d_load_font_file("app0:assets/LDFCOMMIUNISMSANS.ttf");
+	vita2d_font * commieSans = vita2d_load_font_file("app0:assets/LDFCOMMIUNISMSANS.ttf");
 
 	while(1){
 		vita2d_start_drawing();
@@ -52,7 +46,7 @@ int main(int argc, char *argv[]) {
 		draw_app_list();
 		vita2d_draw_rectangle(0, 521, DISPLAY_WIDTH, 23, RGBA8(0x49, 0x49, 0x49, 0xFF));
 		draw_side_menu();
-		vita2d_draw_rectangle(220, 1, 740, 107, RGBA8(0x49, 0x49, 0x49, 0xFF));
+		vita2d_draw_rectangle(220, 0, 740, 108, RGBA8(0x49, 0x49, 0x49, 0xFF));
 		vita2d_draw_rectangle(218,108, 742, 5, RGBA8(0xC3, 0xC3, 0xC3, 0xFF));
 
 
@@ -66,28 +60,13 @@ int main(int argc, char *argv[]) {
 		vita2d_draw_texture_scale(cross, 450, DISPLAY_HEIGHT - 23, 0.23f, 0.23f);
 		vita2d_draw_texture_scale(circle, 700, DISPLAY_HEIGHT - 23, 0.23f, 0.23f);
 
-		
 
-		
-		//vita2d_draw_line(0, 107, DISPLAY_WIDTH, 107, RGBA8(255, 255, 255, 255));
-		
-		if(loadedFonts < 0){
-			vita2d_draw_rectangle(0,0,48,48, RGBA8(255,0,0,255));
-		}
+		vita2d_font_draw_text(commieSans, 273, 42, RGBA8(255,0,50,255), 31, TITLE );
+		vita2d_font_draw_text(commieSans, 45, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 12.0f, COPYRIGHT);
+		vita2d_font_draw_text(commieSans, 250, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Move around (list/categories)");
+		vita2d_font_draw_text(commieSans, 480, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Submit / Enter");
+		vita2d_font_draw_text(commieSans, 730, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Go back / Cancel");
 
-		if(commiesans == NULL){
-			vita2d_draw_rectangle(0,48,48,48, RGBA8(255,255,0,255));
-		}
-
-		vita2d_font_draw_text(testSans, 273, 42, RGBA8(255,0,50,255), 31, TITLE );
-/* These don't work when using the included one : 
-	They work on vita3k thou 
-		vita2d_font_draw_text(commiesans, 45, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 12.0f, COPYRIGHT);
-
-		vita2d_font_draw_text(commiesans, 250, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Move around (list/categories)");
-		vita2d_font_draw_text(commiesans, 480, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Submit / Enter");
-		vita2d_font_draw_text(commiesans, 730, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Go back / Cancel");
-*/
 
 		vita2d_end_drawing();
 		vita2d_swap_buffers();
@@ -103,8 +82,8 @@ int main(int argc, char *argv[]) {
 	vita2d_free_texture(dpad);
 	vita2d_free_texture(cross);
 	vita2d_free_texture(circle);
-	vita2d_free_font(testSans);
-	unloadFonts();
+	vita2d_free_font(commieSans);
+	//unloadFonts();
 
 	end_side_menu();
 	end_app_list();

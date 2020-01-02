@@ -12,6 +12,7 @@ int loadFonts(){
 
 int unloadFonts(){
 	vita2d_free_font(commiesans);
+    return 0;
 }
 
 vita2d_font * GetCommieFont(){

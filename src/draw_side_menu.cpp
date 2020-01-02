@@ -3,6 +3,7 @@
 #include "app_defines.hpp"
 
 vita2d_texture *category;
+vita2d_font * commieSansM;
 
 void setup_side_menu(){
     category = vita2d_load_PNG_file("app0:assets/HB_CATAGORY.png");
@@ -20,4 +21,5 @@ void draw_side_menu(){
 
 void end_side_menu(){
 	vita2d_free_texture(category);
+	vita2d_free_font(commieSansM);
 }

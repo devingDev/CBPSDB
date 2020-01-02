@@ -103,7 +103,7 @@ vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
   FILE assets/HB_INFO.png assets/HB_INFO.png
   FILE assets/HB_SCROL.png assets/HB_SCROL.png
   FILE assets/HB_SCROL_BAR.png assets/HB_SCROL_BAR.png
-  FILE assets/ldfsans.ttf assets/ldfsans.ttf
+  FILE assets/LDFCOMMIUNISMSANS.ttf assets/LDFCOMMIUNISMSANS.ttf
   FILE assets/whitney-bold.ttf assets/whitney-bold.ttf
   FILE assets/System_search_icon.png assets/System_search_icon.png
   FILE assets/PSVita/Vita_Bumper_Right.png assets/PSVita/Vita_Bumper_Right.png
