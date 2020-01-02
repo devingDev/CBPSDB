@@ -36,6 +36,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
 # Optional. You can specify more param.sfo flags this way.
 set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d PARENTAL_LEVEL=1")
 
+find_package(CURL REQUIRED)
+find_package(OpenSSL REQUIRED)
+
 # Add any additional include paths here
 include_directories(
 )
@@ -49,6 +52,7 @@ link_directories(
 ## Build and link
 # Add all the files needed to compile here
 add_executable(${PROJECT_NAME}
+  src/VitaNet.cpp
   src/VitaPad.cpp
   src/draw_font.cpp
   src/apps.cpp
@@ -76,6 +80,8 @@ target_link_libraries(${PROJECT_NAME}
           ScePower_stub
           SceCommonDialog_stub
           SceRegistryMgr_stub
+          ${CURL_LIBRARIES}
+          ${OPENSSL_LIBRARIES}
           png
           jpeg
           freetype

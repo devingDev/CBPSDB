@@ -8,6 +8,7 @@
 #include "draw_side_menu.hpp"
 #include "draw_app_list.hpp"
 #include "apps.hpp"
+#include "VitaNet.hpp"
 
 const char* TITLE = "CBPS HOMEBREW BROWSER";
 const char* COPYRIGHT = " 2020 by CBPS";
@@ -17,6 +18,11 @@ int main(int argc, char *argv[]) {
 	loadAppsJson();
 	LoadAppsSmart();
 
+	VitaNet vitaNet;
+
+	vitaNet.curlDownloadFile("https://github.com/henkaku/henkaku/releases/download/stubs-r6/libHENkaku_stub.a.zip",
+	 "",
+	 "ux0:data/cbps/test.zip");
 
 	vita2d_init_advanced(8 * 1024 * 1024);
 	vita2d_set_clear_color(RGBA8(0xC3, 0xC3, 0xC3, 0xFF));
