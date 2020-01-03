@@ -159,11 +159,11 @@ void draw_app_list(){
 	int currentY = entries_y_start + y_offset;
 	for(int i = 0; i < appEntries.size(); i++){
 
-		if(currentY < -500){
+		if(currentY < -100){
 			continue;
 		}
 		
-		if(currentY > 1000){
+		if(currentY > 700){
 			break;
 		}
 
