@@ -1,7 +1,11 @@
 #include <stdio.h>
-#include <string.h>
+#include <cstring>
 #include <stdlib.h>
 #include <math.h>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <memory>
 
 #include <psp2/kernel/processmgr.h>
 #include <vita2d.h>
@@ -18,8 +22,9 @@
 #include "apps.hpp"
 #include "VitaNet.hpp"
 
-#include "./archive.h"
+#include "./myfile.h"
 #include "./headgen.h"
+#include "./zip.hpp"
 
 int _newlib_heap_size_user = 128 * 1024 * 1024;
 
@@ -44,9 +49,10 @@ static int unloadScePaf() {
 }
 
 // Name is used for temporary folder so don't put any weird strings in there !
-void installApp(const char* srcFile , const char* name ){
+void installApp(std::string srcFile , const char* name ){
 
   removePath(PACKAGE_DIR);
+  /*
   archiveClearPassword();
   archiveOpen(srcFile);
   char src_path[MAX_PATH_LENGTH];
@@ -55,6 +61,10 @@ void installApp(const char* srcFile , const char* name ){
   extractArchivePath(src_path, PACKAGE_DIR "/");
 
   archiveClose();
+  */
+
+ Zipfile z = Zipfile(srcFile);
+ z.Unzip(std::string(PACKAGE_DIR "/"));
 
   generateHeadBin(PACKAGE_DIR);
 
@@ -106,7 +116,7 @@ int main(int argc, char *argv[]) {
 	 "",
 	 vpkPath);
 	if(resp.httpcode == 200){
-		installApp(vpkPath.c_str(), "testinstall");
+		installApp(vpkPath, "testinstall");
 	}
 
 	vita2d_init_advanced(8 * 1024 * 1024);

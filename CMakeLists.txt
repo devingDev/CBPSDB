@@ -41,6 +41,7 @@ find_package(OpenSSL REQUIRED)
 
 # Add any additional include paths here
 include_directories(
+  src/minizip/
 )
 
 # Add any additional library paths here
@@ -88,8 +89,12 @@ add_resources(vitashell_res ${res_files})
 # Add all the files needed to compile here
 add_executable(${PROJECT_NAME}
   ${vitashell_res}
+  src/minizip/ioapi.c
+  src/minizip/unzip.c
+  src/minizip/zip.c
+  src/zip.cpp
   src/headgen.cpp
-  src/archive.cpp
+  #src/archive.cpp
   src/myfile.cpp
   src/sfo.cpp
   src/strnatcmp.cpp
@@ -157,7 +162,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 ## Create Vita files
-vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME})
+vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME} UNSAFE)
 # The FILE directive lets you add additional files to the VPK, the syntax is
 # FILE src_path dst_path_in_vpk. In this case, we add the LiveArea paths.
 vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
