@@ -93,6 +93,7 @@ int main(int argc, char *argv[]) {
   	sceIoMkdir( "ux0:data/cbps/icons/" , 0777);
   	sceIoMkdir( "ux0:data/cbps/pkg/" , 0777);
 	
+	downloadJson();
 	loadAppsJson();
 	LoadAppsSmart();
 

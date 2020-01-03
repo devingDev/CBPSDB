@@ -1,6 +1,6 @@
 #include "json.hpp"
 #include "apps.hpp"
-
+#include "main.hpp"
 
 
 App::App(){}
@@ -57,6 +57,14 @@ int LoadAppsSmart(){
 
     for(int i = 0; i < appsAmount; i++){
         App app;
+
+        app.id = std::to_string(i);
+        app.thumbnailUrl = std::string(BASE_URL);
+        app.thumbnailUrl.append("homebrews/");
+        app.thumbnailUrl.append(std::to_string(i));
+        app.thumbnailUrl.append("/icon.png");
+
+
         if(!appsJSON["apps"][i]["name"].is_null()){
             app.app_name = appsJSON["apps"][i]["name"].get<std::string>();
         }else{
@@ -69,10 +77,7 @@ int LoadAppsSmart(){
         }
 
         if(!appsJSON["apps"][i]["id"].is_null()){
-            app.id = appsJSON["apps"][i]["id"].get<std::string>();
-            app.thumbnailUrl = "http://217.61.5.187/cbpsdb/";
-            app.thumbnailUrl.append(app.id);
-            app.thumbnailUrl.append("/icon.png");
+            app.legacy_id = appsJSON["apps"][i]["id"].get<std::string>();
         }
 
         allApps.push_back(app);

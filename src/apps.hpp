@@ -18,6 +18,7 @@ class App {
 		std::string thumbnailUrl = "";
 		std::string size = "";
 		std::string id = "";
+		std::string legacy_id = "";
 		
 		App();
 		~App();

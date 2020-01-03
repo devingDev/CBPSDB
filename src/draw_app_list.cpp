@@ -57,20 +57,24 @@ vita2d_texture * loadIcon(std::string id){
 void DownloadAppIcon(std::string url, std::string id, AppEntry * appEntry){
 	std::string path = createIconPath(id);
 	VitaNet::http_response resp = vitaNet.curlDownloadFile(url, "", path);
+
 	if(resp.httpcode == 200){
 		appEntry->icon = loadIcon(path.c_str());
 		if(appEntry->icon == NULL){
 			appEntry->failedIconLoad = true;
 			appEntry->triedDownload = true;
 		}
+	}else{
 	}
 }
 
 void downloadJson(){
 	std::string dbJsonPath = "ux0:data/cbps/db.json";
-	VitaNet::http_response resp = vitaNet.curlDownloadFile("http://217.61.5.187/cbpsdb/default_db.json", "", dbJsonPath);
+	std::string jsonUrl = std::string(BASE_URL);
+	jsonUrl.append("default_db.json");
+	VitaNet::http_response resp = vitaNet.curlDownloadFile(jsonUrl, "", dbJsonPath);
 	if(resp.httpcode != 200){
-		sceIoRemove(dbJsonPath.c_str());
+		//sceIoRemove(dbJsonPath.c_str());
 	}
 }
 
@@ -174,7 +178,7 @@ void draw_app_list(){
 	}
 
 
-	y_offset -= 0.16f;
+	y_offset -= 0.5f;
 }
 
 void end_app_list(){
