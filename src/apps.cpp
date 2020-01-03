@@ -69,7 +69,7 @@ int LoadAppsSmart(){
         }
         allApps.push_back(app);
     }
-
+    return 0;
 }
 
 App * GetApp(int i){

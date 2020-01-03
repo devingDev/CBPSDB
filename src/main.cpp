@@ -2,16 +2,95 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+
 #include <psp2/kernel/processmgr.h>
 #include <vita2d.h>
+#include <psp2/display.h>
+#include <psp2/promoterutil.h>
+#include <psp2/sysmodule.h>
+#include <psp2/io/stat.h>
+#include <psp2/io/fcntl.h>
+#include <psp2/ctrl.h>
+
 #include "app_defines.hpp"
 #include "draw_side_menu.hpp"
 #include "draw_app_list.hpp"
 #include "apps.hpp"
 #include "VitaNet.hpp"
 
+#include "./archive.h"
+#include "./headgen.h"
+
+int _newlib_heap_size_user = 128 * 1024 * 1024;
+
+
+static int loadScePaf() {
+  static uint32_t argp[] = { 0x180000, 0xFFFFFFFF, 0xFFFFFFFF, 1, 0xFFFFFFFF, 0xFFFFFFFF };
+
+  int result = -1;
+
+  uint32_t buf[4];
+  buf[0] = sizeof(buf);
+  buf[1] = (uint32_t)&result;
+  buf[2] = -1;
+  buf[3] = -1;
+
+  return sceSysmoduleLoadModuleInternalWithArg(SCE_SYSMODULE_INTERNAL_PAF, sizeof(argp), argp, buf);
+}
+
+static int unloadScePaf() {
+  uint32_t buf = 0;
+  return sceSysmoduleUnloadModuleInternalWithArg(SCE_SYSMODULE_INTERNAL_PAF, 0, NULL, &buf);
+}
+
+// Name is used for temporary folder so don't put any weird strings in there !
+void installApp(const char* srcFile , const char* name ){
+
+  removePath(PACKAGE_DIR);
+  archiveClearPassword();
+  archiveOpen(srcFile);
+  char src_path[MAX_PATH_LENGTH];
+  strcpy(src_path, srcFile);
+  addEndSlash(src_path);
+  extractArchivePath(src_path, PACKAGE_DIR "/");
+
+  archiveClose();
+
+  generateHeadBin(PACKAGE_DIR);
+
+  // Start promoter stuff
+  loadScePaf();
+  sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
+  scePromoterUtilityInit();
+
+
+  //debugNetPrinf(DEBUG,"Result of copy :  %d \n" , copyResult);
+
+  //debugNetPrinf(DEBUG,"Installing %s \n" , name);
+  //debugNetPrinf(DEBUG,"From %s \n" , srcFolder);
+  //debugNetPrinf(DEBUG,"Temporary folder %s \n" , tmpFolder);
+
+  if (scePromoterUtilityPromotePkgWithRif(PACKAGE_DIR , 1) == 0)
+  {
+    //debugNetPrinf(DEBUG,"Successful install of %s \n" , name);
+  }
+  else
+  {
+    //debugNetPrinf(DEBUG,"Failed to install %s \n" , name);
+  }
+
+  // End promoter stuff
+  scePromoterUtilityExit();
+  sceSysmoduleUnloadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
+  unloadScePaf();
+  //debugNetPrinf(DEBUG,"\r\n\r\n\r\n");
+}
+
 const char* TITLE = "CBPS HOMEBREW BROWSER";
 const char* COPYRIGHT = " 2020 by CBPS";
+
+
+
 
 int main(int argc, char *argv[]) {
 	//int loadedFonts = loadFonts();
@@ -20,9 +99,15 @@ int main(int argc, char *argv[]) {
 
 	VitaNet vitaNet;
 
-	vitaNet.curlDownloadFile("https://github.com/henkaku/henkaku/releases/download/stubs-r6/libHENkaku_stub.a.zip",
+  	sceIoMkdir( "ux0:data/cbps/" , 0777);
+  	sceIoMkdir( "ux0:data/cbps/pkg/" , 0777);
+	std::string vpkPath = "ux0:data/cbps/vita_cord.vpk";
+	VitaNet::http_response resp = vitaNet.curlDownloadFile("https://github.com/devingDev/VitaCord/releases/download/1.5fix1/vita_cord.vpk",
 	 "",
-	 "ux0:data/cbps/test.zip");
+	 vpkPath);
+	if(resp.httpcode == 200){
+		installApp(vpkPath.c_str(), "testinstall");
+	}
 
 	vita2d_init_advanced(8 * 1024 * 1024);
 	vita2d_set_clear_color(RGBA8(0xC3, 0xC3, 0xC3, 0xFF));

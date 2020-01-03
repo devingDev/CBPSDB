@@ -31,8 +31,8 @@ set(VITA_VERSION  "01.00")
 
 ## Flags and includes for building
 # Note that we make sure not to overwrite previous flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -g")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpermissive -Wall -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive -std=c++11 -g")
 # Optional. You can specify more param.sfo flags this way.
 set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d PARENTAL_LEVEL=1")
 
@@ -49,9 +49,50 @@ link_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+
+FUNCTION(ADD_RESOURCES out_var)
+  SET(result)
+  FOREACH(in_f ${ARGN})
+  SET(out_f "${CMAKE_CURRENT_BINARY_DIR}/${in_f}.o")
+  GET_FILENAME_COMPONENT(out_dir ${out_f} DIRECTORY)
+  ADD_CUSTOM_COMMAND(OUTPUT ${out_f}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${out_dir}
+    COMMAND ${CMAKE_LINKER} -r -b binary -o ${out_f} ${in_f}
+    DEPENDS ${in_f}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Building resource ${out_f}"
+    VERBATIM
+    )
+  LIST(APPEND result ${out_f})
+  ENDFOREACH()
+  SET(${out_var} "${result}" PARENT_SCOPE)
+ENDFUNCTION()
+
+file(GLOB res_files RELATIVE
+  ${CMAKE_SOURCE_DIR}
+  resources/default/*.png
+  resources/default/*.txt
+  resources/electron/*.png
+  resources/electron/*.txt
+  resources/*.png
+  resources/*.txt
+  resources/*.bin
+  resources/*.suprx
+  resources/*.skprx
+)
+
+
+add_resources(vitashell_res ${res_files})
+
 ## Build and link
 # Add all the files needed to compile here
 add_executable(${PROJECT_NAME}
+  ${vitashell_res}
+  src/headgen.cpp
+  src/archive.cpp
+  src/myfile.cpp
+  src/sfo.cpp
+  src/strnatcmp.cpp
   src/VitaNet.cpp
   src/VitaPad.cpp
   src/draw_font.cpp
@@ -65,21 +106,6 @@ add_executable(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
 
 					vita2d
-          SceNet_stub
-          ScePgf_stub
-          ScePvf_stub
-          SceGxm_stub
-          SceHttp_stub
-          SceCtrl_stub
-          SceTouch_stub
-          SceNetCtl_stub
-          SceAppUtil_stub
-          SceDisplay_stub
-          SceLibKernel_stub
-          SceSysmodule_stub
-          ScePower_stub
-          SceCommonDialog_stub
-          SceRegistryMgr_stub
           ${CURL_LIBRARIES}
           ${OPENSSL_LIBRARIES}
           png
@@ -88,6 +114,46 @@ target_link_libraries(${PROJECT_NAME}
           c
           m
           z
+          onigmo
+          archive
+          bz2
+          lzma
+          crypto
+          expat
+          taihen_stub
+  SceAppMgr_stub
+  SceAppUtil_stub
+  SceAudio_stub
+  SceAudiodec_stub
+  SceCamera_stub
+  SceCommonDialog_stub
+  SceCtrl_stub
+  SceDisplay_stub
+  SceFios2_stub
+  SceGxm_stub
+  SceIme_stub
+  SceHttp_stub
+  SceLibKernel_stub
+  SceMtpIfDriver_stub
+  SceMusicExport_stub
+  SceNet_stub
+  SceNetCtl_stub
+  SceNpDrm_stub
+  SceRegistryMgr_stub
+  SceShellSvc_stub
+  SceSqlite_stub
+  SceSsl_stub
+  SceSysmodule_stub
+  ScePgf_stub
+  ScePhotoExport_stub
+  ScePower_stub
+  ScePspnetAdhoc_stub
+  ScePromoterUtil_stub
+  SceTouch_stub
+  SceUdcd_stub
+  SceUsbstorVStorDriver_stub
+  SceVideoExport_stub
+  SceVshBridge_stub
 )
 
 ## Create Vita files
@@ -118,4 +184,5 @@ vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
   FILE assets/PSVita/Vita_Circle.png assets/PSVita/Vita_Circle.png
   FILE assets/Copyright.png assets/Copyright.png
   FILE assets/default_db.json assets/default_db.json
+  FILE resources/head.bin resources/head.bin
 )
