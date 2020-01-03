@@ -70,28 +70,17 @@ void closeLog(){
 }
 
 void DownloadAppIcon(std::string url, std::string id, AppEntry * appEntry){
-	openLog();
-	writeLog(url);
-	writeLog(id);
 	std::string path = createIconPath(id);
-	writeLog(path);
-	closeLog();
 	VitaNet::http_response resp = vitaNet.curlDownloadFile(url, "", path);
-	openLog();
-	writeLog(std::to_string(resp.httpcode));
 	if(resp.httpcode == 200){
 		appEntry->icon = loadIcon(path.c_str());
 		if(appEntry->icon == NULL){
 			appEntry->failedIconLoad = true;
 			appEntry->triedDownload = true;
-			writeLog("Load icon failed [521]");
 		}else{
-			writeLog("Load icon success [214]");
 		}
 	}else{
-		writeLog("Download icon failed [721]");
 	}
-	closeLog();
 }
 
 void downloadJson(){
@@ -207,7 +196,7 @@ void draw_app_list(){
 	}
 
 
-	y_offset -= 0.5f;
+	y_offset -= 0.75f;
 }
 
 void end_app_list(){
