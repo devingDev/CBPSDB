@@ -1,6 +1,6 @@
 void setup_app_list();
 
-void do_checks_before_draw();
+void do_checks_after_draw();
 
 void downloadJson();
 

@@ -27,7 +27,7 @@ vita2d_texture *info;
 
 vita2d_font *commieSansL;
 
-float y_offset = 0.0f;
+float y_offset = 0;
 std::string nameOfAppTest = "TEST";
 std::string descOfAppTest = "TESTDESC";
 
@@ -54,18 +54,44 @@ vita2d_texture * loadIcon(std::string id){
 	return vita2d_load_PNG_file(path.c_str());
 }
 
-void DownloadAppIcon(std::string url, std::string id, AppEntry * appEntry){
-	std::string path = createIconPath(id);
-	VitaNet::http_response resp = vitaNet.curlDownloadFile(url, "", path);
 
+SceUID fd;
+void openLog(){
+	fd = sceIoOpen("ux0:data/cbps/log.txt", SCE_O_WRONLY|SCE_O_APPEND|SCE_O_CREAT, 0777);
+}
+void writeLog(std::string data){
+	const char * nl = "\r\n";
+	const char * datac = data.c_str();
+	sceIoWrite(fd, datac, strlen(datac));
+	sceIoWrite(fd, nl, strlen(nl));
+}
+void closeLog(){
+	sceIoClose(fd);
+}
+
+void DownloadAppIcon(std::string url, std::string id, AppEntry * appEntry){
+	openLog();
+	writeLog(url);
+	writeLog(id);
+	std::string path = createIconPath(id);
+	writeLog(path);
+	closeLog();
+	VitaNet::http_response resp = vitaNet.curlDownloadFile(url, "", path);
+	openLog();
+	writeLog(std::to_string(resp.httpcode));
 	if(resp.httpcode == 200){
 		appEntry->icon = loadIcon(path.c_str());
 		if(appEntry->icon == NULL){
 			appEntry->failedIconLoad = true;
 			appEntry->triedDownload = true;
+			writeLog("Load icon failed [521]");
+		}else{
+			writeLog("Load icon success [214]");
 		}
 	}else{
+		writeLog("Download icon failed [721]");
 	}
+	closeLog();
 }
 
 void downloadJson(){
@@ -89,12 +115,12 @@ void setup_app_list(){
 
 	appEntries.clear();
 
-	int currentY = entries_y_start;
 	for(int i = 0; i < GetAppsAmount(); i++){
 		App * app = GetApp(i);
 		if(app == NULL){
 			continue;
 		}
+		float currentY = entries_y_start + y_offset + entries_y_diff * i;
 		AppEntry appEntry;
 		appEntry.index = i;
 		
@@ -109,33 +135,37 @@ void setup_app_list(){
 			}else{
 				appEntries[i].failedIconLoad = false;
 			}
+		}else{
+			appEntries[i].icon = NULL;
 		}
 
-		currentY += entries_y_diff;
 	}
 	
 }
 
-void do_checks_before_draw(){
-	int currentY = entries_y_start + y_offset;
+void do_checks_after_draw(){
 	for(int i = 0; i < appEntries.size(); i++){
+		float currentY = entries_y_start + y_offset + entries_y_diff * i;
 
-		if(currentY < -500){
+		if(currentY < -1000){
 			if(appEntries[i].icon != NULL){
 				vita2d_free_texture(appEntries[i].icon);
+				appEntries[i].icon = NULL;
 			}
 			continue;
 		}
 		
-		if(currentY > 1000){
+		if(currentY > 1400){
 			if(appEntries[i].icon != NULL){
 				vita2d_free_texture(appEntries[i].icon);
+				appEntries[i].icon = NULL;
 			}
 			continue;
 		}
 
 		if(appEntries[i].icon == NULL){
 			if(appEntries[i].triedDownload == true && appEntries[i].failedIconLoad == true){
+				appEntries[i].icon = NULL;
 				continue;
 			}
 			appEntries[i].icon = loadIcon(GetApp(i)->id);
@@ -147,7 +177,6 @@ void do_checks_before_draw(){
 			}
 		}
 		
-		currentY += entries_y_diff;
 	}
 }
 
@@ -156,25 +185,25 @@ void draw_app_list(){
     vita2d_draw_texture(scrollbar, 915, 120);
     vita2d_draw_texture(scroll, 904, 144);
 
-	int currentY = entries_y_start + y_offset;
 	for(int i = 0; i < appEntries.size(); i++){
 
-		if(currentY < -100){
+		float currentY = entries_y_start + y_offset + entries_y_diff * i;
+
+		if(currentY < -200){
 			continue;
 		}
 		
-		if(currentY > 700){
-			break;
+		if(currentY > 600){
+			i = appEntries.size();
+			continue;
 		}
 
-    	vita2d_draw_texture(bar, 236, currentY + y_offset);
-		vita2d_font_draw_text(commieSansL, 460, currentY + 30 + y_offset, RGBA8(255,255,255,255), 26.0f, GetApp(i)->app_name.c_str());
-		vita2d_font_draw_text(commieSansL, 460, currentY + 50 + y_offset, RGBA8(255,255,255,255), 18.0f, GetApp(i)->short_description.c_str());
+    	vita2d_draw_texture(bar, 236, currentY );
+		vita2d_font_draw_text(commieSansL, 460, currentY + 30 , RGBA8(255,255,255,255), 26.0f, GetApp(i)->app_name.c_str());
+		vita2d_font_draw_text(commieSansL, 460, currentY + 50 , RGBA8(255,255,255,255), 18.0f, GetApp(i)->short_description.c_str());
 		if(appEntries[i].icon != NULL){
-			vita2d_draw_texture_scale(appEntries[i].icon, 250, currentY + 20 + y_offset, 0.5f, 0.5f);
+			vita2d_draw_texture_scale(appEntries[i].icon, 250, currentY + 20, 0.5f, 0.5f);
 		}
-		
-		currentY += entries_y_diff;
 	}
 
 

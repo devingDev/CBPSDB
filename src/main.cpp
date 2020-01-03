@@ -126,8 +126,6 @@ int main(int argc, char *argv[]) {
 
 	while(1){
 
-		do_checks_before_draw();
-
 		vita2d_start_drawing();
 		vita2d_clear_screen();
 		
@@ -163,6 +161,8 @@ int main(int argc, char *argv[]) {
 		vita2d_end_drawing();
 		vita2d_swap_buffers();
 		vita2d_wait_rendering_done();
+
+		do_checks_after_draw();
 	}
 	
 	vita2d_fini();
