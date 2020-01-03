@@ -22,10 +22,10 @@ int ex(const char *fname) {
 
 int loadAppsJson(){
 	int fhAppsJson;
-    if (ex("ux0:data/cbpsdb/apps.json")) {
-        fhAppsJson = sceIoOpen("ux0:data/hhapp/apps.json" , SCE_O_RDONLY , 0777);
-    } else if (ex("ux0:data/cbpsdb/db.json")) {
-        fhAppsJson = sceIoOpen("ux0:data/cbpsdb/db.json" , SCE_O_RDONLY , 0777); 
+    if (ex("ux0:data/cbps/apps.json")) {
+        fhAppsJson = sceIoOpen("ux0:data/cbps/apps.json" , SCE_O_RDONLY , 0777);
+    } else if (ex("ux0:data/cbps/db.json")) {
+        fhAppsJson = sceIoOpen("ux0:data/cbps/db.json" , SCE_O_RDONLY , 0777); 
     } else {
         fhAppsJson = sceIoOpen("app0:assets/default_db.json" , SCE_O_RDONLY , 0777); 
     }
@@ -67,6 +67,14 @@ int LoadAppsSmart(){
         }else{
             app.short_description = "No short description available.";
         }
+
+        if(!appsJSON["apps"][i]["id"].is_null()){
+            app.id = appsJSON["apps"][i]["id"].get<std::string>();
+            app.thumbnailUrl = "http://217.61.5.187/cbpsdb/";
+            app.thumbnailUrl.append(app.id);
+            app.thumbnailUrl.append("/icon.png");
+        }
+
         allApps.push_back(app);
     }
     return 0;
@@ -99,3 +107,6 @@ std::string GetAppName(int i){
     return appName;
 }
 
+int GetAppsAmount(){
+    return appsAmount;
+}

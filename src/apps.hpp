@@ -17,6 +17,7 @@ class App {
 		std::string data_link = "";
 		std::string thumbnailUrl = "";
 		std::string size = "";
+		std::string id = "";
 		
 		App();
 		~App();
@@ -27,3 +28,4 @@ int loadAppsJson();
 int LoadAppsSmart();
 std::string GetAppName(int i);
 App * GetApp(int i);
+int GetAppsAmount();

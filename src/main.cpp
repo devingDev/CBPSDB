@@ -21,6 +21,7 @@
 #include "draw_app_list.hpp"
 #include "apps.hpp"
 #include "VitaNet.hpp"
+#include "main.hpp"
 
 #include "./myfile.h"
 #include "./headgen.h"
@@ -51,49 +52,34 @@ static int unloadScePaf() {
 // Name is used for temporary folder so don't put any weird strings in there !
 void installApp(std::string srcFile , const char* name ){
 
-  removePath(PACKAGE_DIR);
-  /*
-  archiveClearPassword();
-  archiveOpen(srcFile);
-  char src_path[MAX_PATH_LENGTH];
-  strcpy(src_path, srcFile);
-  addEndSlash(src_path);
-  extractArchivePath(src_path, PACKAGE_DIR "/");
+	removePath(PACKAGE_DIR);
 
-  archiveClose();
-  */
+	Zipfile z = Zipfile(srcFile);
+	z.Unzip(std::string(PACKAGE_DIR "/"));
 
- Zipfile z = Zipfile(srcFile);
- z.Unzip(std::string(PACKAGE_DIR "/"));
+	generateHeadBin(PACKAGE_DIR);
 
-  generateHeadBin(PACKAGE_DIR);
+	// Start promoter stuff
+	loadScePaf();
+	sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
+	scePromoterUtilityInit();
 
-  // Start promoter stuff
-  loadScePaf();
-  sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
-  scePromoterUtilityInit();
+	if (scePromoterUtilityPromotePkgWithRif(PACKAGE_DIR , 1) == 0)
+	{
+	//debugNetPrinf(DEBUG,"Successful install of %s \n" , name);
+	}
+	else
+	{
+	//debugNetPrinf(DEBUG,"Failed to install %s \n" , name);
+	}
 
+	// End promoter stuff
+	scePromoterUtilityExit();
+	sceSysmoduleUnloadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
+	unloadScePaf();
 
-  //debugNetPrinf(DEBUG,"Result of copy :  %d \n" , copyResult);
-
-  //debugNetPrinf(DEBUG,"Installing %s \n" , name);
-  //debugNetPrinf(DEBUG,"From %s \n" , srcFolder);
-  //debugNetPrinf(DEBUG,"Temporary folder %s \n" , tmpFolder);
-
-  if (scePromoterUtilityPromotePkgWithRif(PACKAGE_DIR , 1) == 0)
-  {
-    //debugNetPrinf(DEBUG,"Successful install of %s \n" , name);
-  }
-  else
-  {
-    //debugNetPrinf(DEBUG,"Failed to install %s \n" , name);
-  }
-
-  // End promoter stuff
-  scePromoterUtilityExit();
-  sceSysmoduleUnloadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
-  unloadScePaf();
-  //debugNetPrinf(DEBUG,"\r\n\r\n\r\n");
+	// Remove Vpk
+	sceIoRemove(srcFile.c_str());
 }
 
 const char* TITLE = "CBPS HOMEBREW BROWSER";
@@ -101,16 +87,16 @@ const char* COPYRIGHT = " 2020 by CBPS";
 
 
 
-
 int main(int argc, char *argv[]) {
 	//int loadedFonts = loadFonts();
+  	sceIoMkdir( "ux0:data/cbps/" , 0777);
+  	sceIoMkdir( "ux0:data/cbps/icons/" , 0777);
+  	sceIoMkdir( "ux0:data/cbps/pkg/" , 0777);
+	
 	loadAppsJson();
 	LoadAppsSmart();
 
-	VitaNet vitaNet;
-
-  	sceIoMkdir( "ux0:data/cbps/" , 0777);
-  	sceIoMkdir( "ux0:data/cbps/pkg/" , 0777);
+	/*
 	std::string vpkPath = "ux0:data/cbps/vita_cord.vpk";
 	VitaNet::http_response resp = vitaNet.curlDownloadFile("https://github.com/devingDev/VitaCord/releases/download/1.5fix1/vita_cord.vpk",
 	 "",
@@ -118,6 +104,7 @@ int main(int argc, char *argv[]) {
 	if(resp.httpcode == 200){
 		installApp(vpkPath, "testinstall");
 	}
+	*/
 
 	vita2d_init_advanced(8 * 1024 * 1024);
 	vita2d_set_clear_color(RGBA8(0xC3, 0xC3, 0xC3, 0xFF));
@@ -137,6 +124,9 @@ int main(int argc, char *argv[]) {
 	vita2d_font * commieSans = vita2d_load_font_file("app0:assets/LDFCOMMIUNISMSANS.ttf");
 
 	while(1){
+
+		do_checks_before_draw();
+
 		vita2d_start_drawing();
 		vita2d_clear_screen();
 		
