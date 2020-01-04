@@ -11,6 +11,7 @@ class AppEntry {
 	public:
 		int index = 0;
 		vita2d_texture * icon;
+		bool unloaded = false;
 		
 };
 class downloadiconpackClass{
@@ -139,12 +140,13 @@ int loadPngThread(SceSize args, void * argp){
 			int i = c.indexInVec;
 
 			if(c.unload){
+				lockloading[i].lock();
 				if(appEntries[i].icon != NULL){
-					lockloading[i].lock();
 					vita2d_free_texture(appEntries[i].icon);
 					appEntries[i].icon = NULL;
-					lockloading[i].unlock();
 				}
+				appEntries[i].unloaded = true;
+				lockloading[i].unlock();
 			}else if(appEntries[i].icon == NULL){
 				App * app = GetApp(i);
 				if(appIconsDownloading[i] && !appIconsDownloaded[i]){
@@ -153,6 +155,7 @@ int loadPngThread(SceSize args, void * argp){
 				else if(appIconsDownloaded[i]){
 					lockloading[i].lock();
 					appEntries[i].icon = loadIcon(app->id);
+					appEntries[i].unloaded = false;
 					lockloading[i].unlock();
 					continue;
 				}
@@ -163,6 +166,10 @@ int loadPngThread(SceSize args, void * argp){
 					if(appEntries[i].icon == NULL){
 						appIconsDownloading[i] = true;
 						DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i],i);
+					}else{
+						lockloading[i].lock();
+						appEntries[i].unloaded = false;
+						lockloading[i].unlock();
 					}
 				}
 			}else{
@@ -245,17 +252,20 @@ void setup_app_list(){
 		if(currentY < 1000){
 			appEntries[i].icon = loadIcon(app->id);
 			if(appEntries[i].icon == NULL){
-				DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i], i);
 				appIconsDownloading[i] = true;
 				appIconsDownloaded[i] = false;
+				appEntries[i].unloaded = true;
+				DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i], i);
 			}else{
 				appIconsDownloading[i] = false;
 				appIconsDownloaded[i] = false;
+				appEntries[i].unloaded = false;
 				loadedIcon = true;
 			}
 		}else{
 			appIconsDownloading[i] = false;
 			appIconsDownloaded[i] = false;
+			appEntries[i].unloaded = true;
 			appEntries[i].icon = NULL;
 		}
 		
@@ -275,11 +285,10 @@ void do_checks_after_draw(int move){
 		c.indexInVec = i;
 		c.unload = false;
 
-		if(currentY < -1000){
-			c.unload = true;
-		}
-		
-		if(currentY > 1400){
+		if(currentY < -1000 || currentY > 1400){
+			if(appEntries[i].unloaded){
+				continue;
+			}
 			c.unload = true;
 		}
 
