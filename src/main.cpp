@@ -22,6 +22,7 @@
 #include "apps.hpp"
 #include "VitaNet.hpp"
 #include "main.hpp"
+#include "VitaPad.hpp"
 
 #include "./myfile.h"
 #include "./headgen.h"
@@ -29,6 +30,7 @@
 
 int _newlib_heap_size_user = 128 * 1024 * 1024;
 
+VitaPad vitaPad;
 
 static int loadScePaf() {
   static uint32_t argp[] = { 0x180000, 0xFFFFFFFF, 0xFFFFFFFF, 1, 0xFFFFFFFF, 0xFFFFFFFF };
@@ -162,7 +164,16 @@ int main(int argc, char *argv[]) {
 		vita2d_swap_buffers();
 		vita2d_wait_rendering_done();
 
-		do_checks_after_draw();
+
+		vitaPad.Read();
+		int move = 0;
+		if(vitaPad.down){
+			move = 1;
+		}else if(vitaPad.up){
+			move = -1;
+		}
+		move *= 5;
+		do_checks_after_draw(move);
 	}
 	
 	vita2d_fini();

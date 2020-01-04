@@ -11,11 +11,7 @@ class AppEntry {
 	public:
 		int index = 0;
 		vita2d_texture * icon;
-		bool failedLocalLoad = false;
-		bool failedDownloadLoad = false;
-		bool queuedForDownload;
-		bool triedDownload = false;
-		bool iconLoaded = false;
+		bool iconDownloaded = false;
 		
 		AppEntry();
 		~AppEntry();
@@ -23,6 +19,13 @@ class AppEntry {
 AppEntry::AppEntry(){}
 AppEntry::~AppEntry(){}
 
+class downloadiconpackClass{
+	public:
+		AppEntry ** appEntry;
+		std::string url;
+		std::string path;
+		int indexInVec;
+};
 
 vita2d_texture *bar;
 vita2d_texture *scroll;
@@ -39,20 +42,19 @@ std::string descOfAppTest = "TESTDESC";
 
 std::vector<AppEntry> appEntries;
 
+std::vector<bool> appIconsDownloading;
+std::vector<bool> appIconsDownloaded;
+
 const int entries_y_start = 130;
 const int entries_y_diff= 125;
 
 VitaNet vitaNet;
 
 
-class downloadiconpackClass{
-	public:
-		AppEntry ** appEntry;
-		std::string url;
-		std::string path;
-};
 std::queue<downloadiconpackClass> dlpacks;
-std::mutex dliconmutex;
+std::mutex dlmlock;
+std::mutex cmlock;
+SceUID dlThreadId = -1;
 
 vita2d_texture * loadIcon(const char * path){
 	return vita2d_load_PNG_file(path);
@@ -84,25 +86,25 @@ void writeLog(std::string data){
 void closeLog(){
 	sceIoClose(fd);
 }
-void DownloadAppIconThreaded(std::string url, std::string path, AppEntry ** ae){
+void DownloadAppIconLocking(std::string url, std::string path, AppEntry ** ae, int vecIndex){
 	//AppEntry * appEntry = *ae;
 	VitaNet::http_response resp = vitaNet.curlDownloadFile(url, "", path);
+	cmlock.lock();
 	if(resp.httpcode == 200){
-		//appEntry->failedDownloadLoad == false;
+		appIconsDownloaded[vecIndex] = true;
 	}else{
-		//appEntry->failedDownloadLoad == true;
+		appIconsDownloaded[vecIndex] = false;
 	}
-	//appEntry->triedDownload = true;
-	//appEntry->queuedForDownload = false;
 }
-void DownloadAppIcon(std::string url, std::string id, AppEntry * appEntry){
+void DownloadAppIcon(std::string url, std::string id, AppEntry * appEntry, int vecIndex){
 	downloadiconpackClass d ;
 	d.appEntry = &appEntry;
 	d.url = std::string(url);
 	d.path = std::string(createIconPath(id));
-	dliconmutex.lock();
+	d.indexInVec = vecIndex;
+	dlmlock.lock();
 	dlpacks.push(d);
-	dliconmutex.unlock();
+	dlmlock.unlock();
 }
 
 void downloadJson(){
@@ -116,29 +118,25 @@ void downloadJson(){
 }
 
 
-SceUID dlThreadId = -1;
-std::mutex dlthlock;
 int downloadThread(SceSize args, void * argp){
 	while(1) { 
 
-		dliconmutex.lock();
 		bool isemptyqueue = dlpacks.empty();
-		dliconmutex.unlock();
 
 		if(isemptyqueue){
 			sceKernelDelayThread(50000);
 		}else{
-			dliconmutex.lock();
+			dlmlock.lock();
 			downloadiconpackClass p = downloadiconpackClass( dlpacks.front() );
-			dliconmutex.unlock();
+			dlmlock.unlock();
 
-			dlthlock.lock();
-			DownloadAppIconThreaded(p.url, p.path, p.appEntry);
-			dlthlock.unlock();
+			cmlock.lock();
+			DownloadAppIconLocking(p.url, p.path, p.appEntry, p.indexInVec);
+			cmlock.unlock();
 
-			dliconmutex.lock();
+			dlmlock.lock();
 			dlpacks.pop();
-			dliconmutex.unlock();
+			dlmlock.unlock();
 		}
 		
 		sceKernelDelayThread(10000);
@@ -155,6 +153,8 @@ void setup_app_list(){
 	commieSansL = vita2d_load_font_file("app0:assets/LDFCOMMIUNISMSANS.ttf");
 
 	appEntries.clear();
+	appIconsDownloaded.clear();
+	appIconsDownloading.clear();
 
 	dlThreadId = sceKernelCreateThread("dlthread", downloadThread, 0x10000100, 0x10000, 0, 0, NULL);
 	sceKernelStartThread(dlThreadId, 0, NULL);
@@ -169,24 +169,38 @@ void setup_app_list(){
 		appEntry.index = i;
 		
 		appEntries.push_back(appEntry);
+		appIconsDownloading.push_back(false);
+		appIconsDownloaded.push_back(false);
 
+		bool loadedIcon = false;
 
 		if(currentY < 1000){
 			appEntries[i].icon = loadIcon(app->id);
 			if(appEntries[i].icon == NULL){
-				appEntries[i].queuedForDownload = true;
-				DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i]);
+				DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i], i);
+				appIconsDownloading[i] = true;
+				appIconsDownloaded[i] = false;
 			}else{
+				appIconsDownloading[i] = false;
+				appIconsDownloaded[i] = false;
+				loadedIcon = true;
 			}
 		}else{
+			appIconsDownloading[i] = false;
+			appIconsDownloaded[i] = false;
 			appEntries[i].icon = NULL;
 		}
-
+		
 	}
 	
 }
 
-void do_checks_after_draw(){
+void do_checks_after_draw(int move){
+	
+
+	y_offset -= move;
+	
+	cmlock.lock();
 	for(int i = 0; i < appEntries.size(); i++){
 		float currentY = entries_y_start + y_offset + entries_y_diff * i;
 
@@ -208,43 +222,25 @@ void do_checks_after_draw(){
 
 		if(appEntries[i].icon == NULL){
 			App * app = GetApp(i);
-			appEntries[i].icon = loadIcon(app->id);
-			if( appEntries[i].icon == NULL && !appEntries[i].queuedForDownload){
-				appEntries[i].queuedForDownload = true;
-				DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i]);
+			if(appIconsDownloading[i] && !appIconsDownloaded[i]){
+				continue;
+			}
+			else if(appIconsDownloaded[i]){
+				appEntries[i].icon = loadIcon(app->id);
+				continue;
+			}
+			else if(!appIconsDownloading[i]);{
+				appEntries[i].icon = loadIcon(app->id);
+				if(appEntries[i].icon == NULL){
+					appIconsDownloading[i] = true;
+					DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i],i);
+				}
 			}
 		}else{
-				appEntries[i].queuedForDownload = false;
+			
 		}
-/*
-		if(appEntries[i].icon == NULL){
-			if(appEntries[i].failedDownloadLoad == true && appEntries[i].failedLocalLoad == true){
-				//appEntries[i].icon = NULL;
-				continue;
-			}else if(appEntries[i].queuedForDownload == true){
-				continue;
-			}else if(appEntries[i].failedLocalLoad == false){
-				appEntries[i].icon = loadIcon(GetApp(i)->id);
-				if(appEntries[i].icon == NULL){
-					appEntries[i].failedLocalLoad = true;
-				}
-			}else if(appEntries[i].triedDownload == false && appEntries[i].queuedForDownload == false 
-					&& appEntries[i].failedDownloadLoad == false){
-				appEntries[i].queuedForDownload = true;
-				DownloadAppIcon(GetApp(i)->thumbnailUrl, GetApp(i)->id, &appEntries[i]);
-			}
-			else if(appEntries[i].triedDownload == true && appEntries[i].failedDownloadLoad == false){
-				appEntries[i].icon = loadIcon(GetApp(i)->id);
-				if(appEntries[i].icon == NULL){
-					appEntries[i].failedDownloadLoad = true;
-				}
-			}else{
-				appEntries[i].failedLocalLoad = true;
-				appEntries[i].failedDownloadLoad = true;
-			}
-		}*/
-		
 	}
+	cmlock.unlock();
 }
 
 void draw_app_list(){
@@ -273,8 +269,6 @@ void draw_app_list(){
 		}
 	}
 
-
-	y_offset -= 0.75f;
 }
 
 void end_app_list(){
