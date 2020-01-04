@@ -3,13 +3,19 @@
 #include "app_defines.hpp"
 #include "apps.hpp"
 #include "main.hpp"
+#include <queue>
+#include <mutex>
+#include <psp2/kernel/threadmgr.h> 
 
 class AppEntry {
 	public:
 		int index = 0;
 		vita2d_texture * icon;
-		bool failedIconLoad;
-		bool triedDownload;
+		bool failedLocalLoad = false;
+		bool failedDownloadLoad = false;
+		bool queuedForDownload;
+		bool triedDownload = false;
+		bool iconLoaded = false;
 		
 		AppEntry();
 		~AppEntry();
@@ -37,6 +43,16 @@ const int entries_y_start = 130;
 const int entries_y_diff= 125;
 
 VitaNet vitaNet;
+
+
+class downloadiconpackClass{
+	public:
+		AppEntry ** appEntry;
+		std::string url;
+		std::string path;
+};
+std::queue<downloadiconpackClass> dlpacks;
+std::mutex dliconmutex;
 
 vita2d_texture * loadIcon(const char * path){
 	return vita2d_load_PNG_file(path);
@@ -68,19 +84,25 @@ void writeLog(std::string data){
 void closeLog(){
 	sceIoClose(fd);
 }
-
-void DownloadAppIcon(std::string url, std::string id, AppEntry * appEntry){
-	std::string path = createIconPath(id);
+void DownloadAppIconThreaded(std::string url, std::string path, AppEntry ** ae){
+	//AppEntry * appEntry = *ae;
 	VitaNet::http_response resp = vitaNet.curlDownloadFile(url, "", path);
 	if(resp.httpcode == 200){
-		appEntry->icon = loadIcon(path.c_str());
-		if(appEntry->icon == NULL){
-			appEntry->failedIconLoad = true;
-			appEntry->triedDownload = true;
-		}else{
-		}
+		//appEntry->failedDownloadLoad == false;
 	}else{
+		//appEntry->failedDownloadLoad == true;
 	}
+	//appEntry->triedDownload = true;
+	//appEntry->queuedForDownload = false;
+}
+void DownloadAppIcon(std::string url, std::string id, AppEntry * appEntry){
+	downloadiconpackClass d ;
+	d.appEntry = &appEntry;
+	d.url = std::string(url);
+	d.path = std::string(createIconPath(id));
+	dliconmutex.lock();
+	dlpacks.push(d);
+	dliconmutex.unlock();
 }
 
 void downloadJson(){
@@ -90,6 +112,36 @@ void downloadJson(){
 	VitaNet::http_response resp = vitaNet.curlDownloadFile(jsonUrl, "", dbJsonPath);
 	if(resp.httpcode != 200){
 		//sceIoRemove(dbJsonPath.c_str());
+	}
+}
+
+
+SceUID dlThreadId = -1;
+std::mutex dlthlock;
+int downloadThread(SceSize args, void * argp){
+	while(1) { 
+
+		dliconmutex.lock();
+		bool isemptyqueue = dlpacks.empty();
+		dliconmutex.unlock();
+
+		if(isemptyqueue){
+			sceKernelDelayThread(50000);
+		}else{
+			dliconmutex.lock();
+			downloadiconpackClass p = downloadiconpackClass( dlpacks.front() );
+			dliconmutex.unlock();
+
+			dlthlock.lock();
+			DownloadAppIconThreaded(p.url, p.path, p.appEntry);
+			dlthlock.unlock();
+
+			dliconmutex.lock();
+			dlpacks.pop();
+			dliconmutex.unlock();
+		}
+		
+		sceKernelDelayThread(10000);
 	}
 }
 
@@ -103,6 +155,9 @@ void setup_app_list(){
 	commieSansL = vita2d_load_font_file("app0:assets/LDFCOMMIUNISMSANS.ttf");
 
 	appEntries.clear();
+
+	dlThreadId = sceKernelCreateThread("dlthread", downloadThread, 0x10000100, 0x10000, 0, 0, NULL);
+	sceKernelStartThread(dlThreadId, 0, NULL);
 
 	for(int i = 0; i < GetAppsAmount(); i++){
 		App * app = GetApp(i);
@@ -119,10 +174,9 @@ void setup_app_list(){
 		if(currentY < 1000){
 			appEntries[i].icon = loadIcon(app->id);
 			if(appEntries[i].icon == NULL){
-				appEntries[i].failedIconLoad = true;
+				appEntries[i].queuedForDownload = true;
 				DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i]);
 			}else{
-				appEntries[i].failedIconLoad = false;
 			}
 		}else{
 			appEntries[i].icon = NULL;
@@ -153,18 +207,42 @@ void do_checks_after_draw(){
 		}
 
 		if(appEntries[i].icon == NULL){
-			if(appEntries[i].triedDownload == true && appEntries[i].failedIconLoad == true){
-				appEntries[i].icon = NULL;
-				continue;
+			App * app = GetApp(i);
+			appEntries[i].icon = loadIcon(app->id);
+			if( appEntries[i].icon == NULL && !appEntries[i].queuedForDownload){
+				appEntries[i].queuedForDownload = true;
+				DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i]);
 			}
-			appEntries[i].icon = loadIcon(GetApp(i)->id);
-			if(appEntries[i].icon == NULL){
-				appEntries[i].failedIconLoad = true;
-				DownloadAppIcon(GetApp(i)->thumbnailUrl, GetApp(i)->id, &appEntries[i]);
-			}else{
-				appEntries[i].failedIconLoad = false;
-			}
+		}else{
+				appEntries[i].queuedForDownload = false;
 		}
+/*
+		if(appEntries[i].icon == NULL){
+			if(appEntries[i].failedDownloadLoad == true && appEntries[i].failedLocalLoad == true){
+				//appEntries[i].icon = NULL;
+				continue;
+			}else if(appEntries[i].queuedForDownload == true){
+				continue;
+			}else if(appEntries[i].failedLocalLoad == false){
+				appEntries[i].icon = loadIcon(GetApp(i)->id);
+				if(appEntries[i].icon == NULL){
+					appEntries[i].failedLocalLoad = true;
+				}
+			}else if(appEntries[i].triedDownload == false && appEntries[i].queuedForDownload == false 
+					&& appEntries[i].failedDownloadLoad == false){
+				appEntries[i].queuedForDownload = true;
+				DownloadAppIcon(GetApp(i)->thumbnailUrl, GetApp(i)->id, &appEntries[i]);
+			}
+			else if(appEntries[i].triedDownload == true && appEntries[i].failedDownloadLoad == false){
+				appEntries[i].icon = loadIcon(GetApp(i)->id);
+				if(appEntries[i].icon == NULL){
+					appEntries[i].failedDownloadLoad = true;
+				}
+			}else{
+				appEntries[i].failedLocalLoad = true;
+				appEntries[i].failedDownloadLoad = true;
+			}
+		}*/
 		
 	}
 }
