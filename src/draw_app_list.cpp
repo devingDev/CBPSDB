@@ -11,7 +11,6 @@ class AppEntry {
 	public:
 		int index = 0;
 		vita2d_texture * icon;
-		bool iconDownloaded = false;
 		
 		AppEntry();
 		~AppEntry();
@@ -54,7 +53,9 @@ VitaNet vitaNet;
 std::queue<downloadiconpackClass> dlpacks;
 std::mutex dlmlock;
 std::mutex cmlock;
+std::mutex pngloadlock;
 SceUID dlThreadId = -1;
+SceUID pngloadThreadId = -1;
 
 vita2d_texture * loadIcon(const char * path){
 	return vita2d_load_PNG_file(path);
@@ -107,6 +108,8 @@ void DownloadAppIcon(std::string url, std::string id, AppEntry * appEntry, int v
 	dlmlock.unlock();
 }
 
+
+
 void downloadJson(){
 	std::string dbJsonPath = "ux0:data/cbps/db.json";
 	std::string jsonUrl = std::string(BASE_URL);
@@ -117,6 +120,9 @@ void downloadJson(){
 	}
 }
 
+int loadPngThread(SceSize args, void * argp){
+
+}
 
 int downloadThread(SceSize args, void * argp){
 	while(1) { 
@@ -133,6 +139,10 @@ int downloadThread(SceSize args, void * argp){
 			cmlock.lock();
 			DownloadAppIconLocking(p.url, p.path, p.appEntry, p.indexInVec);
 			cmlock.unlock();
+
+			pngloadlock.lock();
+
+			pngloadlock.unlock();
 
 			dlmlock.lock();
 			dlpacks.pop();
@@ -199,7 +209,7 @@ void do_checks_after_draw(int move){
 	
 
 	y_offset -= move;
-	
+
 	cmlock.lock();
 	for(int i = 0; i < appEntries.size(); i++){
 		float currentY = entries_y_start + y_offset + entries_y_diff * i;
@@ -272,6 +282,11 @@ void draw_app_list(){
 }
 
 void end_app_list(){
+	for(int i = 0; i < appEntries.size(); i++){
+		if(appEntries[i].icon != NULL){
+			vita2d_free_texture(appEntries[i].icon);
+		}
+	}
 	vita2d_free_texture(bar);
 	vita2d_free_texture(scroll);
 	vita2d_free_texture(scrollbar);
