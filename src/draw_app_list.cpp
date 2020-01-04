@@ -12,12 +12,7 @@ class AppEntry {
 		int index = 0;
 		vita2d_texture * icon;
 		
-		AppEntry();
-		~AppEntry();
 };
-AppEntry::AppEntry(){}
-AppEntry::~AppEntry(){}
-
 class downloadiconpackClass{
 	public:
 		AppEntry ** appEntry;
@@ -25,6 +20,14 @@ class downloadiconpackClass{
 		std::string path;
 		int indexInVec;
 };
+class loadpngClass{
+	public:
+		int indexInVec;
+		bool unload;
+};
+
+
+std::mutex * lockloading;
 
 vita2d_texture *bar;
 vita2d_texture *scroll;
@@ -51,9 +54,9 @@ VitaNet vitaNet;
 
 
 std::queue<downloadiconpackClass> dlpacks;
+std::queue<loadpngClass> loadpngs;
 std::mutex dlmlock;
 std::mutex cmlock;
-std::mutex pngloadlock;
 SceUID dlThreadId = -1;
 SceUID pngloadThreadId = -1;
 
@@ -90,7 +93,6 @@ void closeLog(){
 void DownloadAppIconLocking(std::string url, std::string path, AppEntry ** ae, int vecIndex){
 	//AppEntry * appEntry = *ae;
 	VitaNet::http_response resp = vitaNet.curlDownloadFile(url, "", path);
-	cmlock.lock();
 	if(resp.httpcode == 200){
 		appIconsDownloaded[vecIndex] = true;
 	}else{
@@ -120,8 +122,61 @@ void downloadJson(){
 	}
 }
 
+std::mutex loadpnglock;
 int loadPngThread(SceSize args, void * argp){
+	while(1){
 
+		bool isemptyqueue = loadpngs.empty();
+		if(isemptyqueue){
+
+		}else{
+			loadpnglock.lock();
+			loadpngClass c = loadpngClass( loadpngs.front());
+			loadpnglock.unlock();
+
+
+			cmlock.lock();
+			int i = c.indexInVec;
+
+			if(c.unload){
+				if(appEntries[i].icon != NULL){
+					lockloading[i].lock();
+					vita2d_free_texture(appEntries[i].icon);
+					appEntries[i].icon = NULL;
+					lockloading[i].unlock();
+				}
+			}else if(appEntries[i].icon == NULL){
+				App * app = GetApp(i);
+				if(appIconsDownloading[i] && !appIconsDownloaded[i]){
+					continue;
+				}
+				else if(appIconsDownloaded[i]){
+					lockloading[i].lock();
+					appEntries[i].icon = loadIcon(app->id);
+					lockloading[i].unlock();
+					continue;
+				}
+				else if(!appIconsDownloading[i]);{
+					lockloading[i].lock();
+					appEntries[i].icon = loadIcon(app->id);
+					lockloading[i].unlock();
+					if(appEntries[i].icon == NULL){
+						appIconsDownloading[i] = true;
+						DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i],i);
+					}
+				}
+			}else{
+				
+			}
+
+			cmlock.unlock();
+
+
+			loadpnglock.lock();
+			loadpngs.pop();
+			loadpnglock.unlock();
+		}
+	}
 }
 
 int downloadThread(SceSize args, void * argp){
@@ -140,9 +195,7 @@ int downloadThread(SceSize args, void * argp){
 			DownloadAppIconLocking(p.url, p.path, p.appEntry, p.indexInVec);
 			cmlock.unlock();
 
-			pngloadlock.lock();
 
-			pngloadlock.unlock();
 
 			dlmlock.lock();
 			dlpacks.pop();
@@ -166,8 +219,13 @@ void setup_app_list(){
 	appIconsDownloaded.clear();
 	appIconsDownloading.clear();
 
+	lockloading = new std::mutex[1000];
+
 	dlThreadId = sceKernelCreateThread("dlthread", downloadThread, 0x10000100, 0x10000, 0, 0, NULL);
 	sceKernelStartThread(dlThreadId, 0, NULL);
+
+	pngloadThreadId = sceKernelCreateThread("pngloadthread", loadPngThread, 0x10000100, 0x10000, 0, 0, NULL);
+	sceKernelStartThread(pngloadThreadId, 0, NULL);
 
 	for(int i = 0; i < GetAppsAmount(); i++){
 		App * app = GetApp(i);
@@ -210,47 +268,27 @@ void do_checks_after_draw(int move){
 
 	y_offset -= move;
 
-	cmlock.lock();
 	for(int i = 0; i < appEntries.size(); i++){
 		float currentY = entries_y_start + y_offset + entries_y_diff * i;
 
+		loadpngClass c;
+		c.indexInVec = i;
+		c.unload = false;
+
 		if(currentY < -1000){
-			if(appEntries[i].icon != NULL){
-				vita2d_free_texture(appEntries[i].icon);
-				appEntries[i].icon = NULL;
-			}
-			continue;
+			c.unload = true;
 		}
 		
 		if(currentY > 1400){
-			if(appEntries[i].icon != NULL){
-				vita2d_free_texture(appEntries[i].icon);
-				appEntries[i].icon = NULL;
-			}
-			continue;
+			c.unload = true;
 		}
 
-		if(appEntries[i].icon == NULL){
-			App * app = GetApp(i);
-			if(appIconsDownloading[i] && !appIconsDownloaded[i]){
-				continue;
-			}
-			else if(appIconsDownloaded[i]){
-				appEntries[i].icon = loadIcon(app->id);
-				continue;
-			}
-			else if(!appIconsDownloading[i]);{
-				appEntries[i].icon = loadIcon(app->id);
-				if(appEntries[i].icon == NULL){
-					appIconsDownloading[i] = true;
-					DownloadAppIcon(app->thumbnailUrl, app->id, &appEntries[i],i);
-				}
-			}
-		}else{
-			
-		}
+
+		loadpnglock.lock();
+		loadpngs.push(c);
+		loadpnglock.unlock();
+
 	}
-	cmlock.unlock();
 }
 
 void draw_app_list(){
@@ -274,8 +312,14 @@ void draw_app_list(){
     	vita2d_draw_texture(bar, 236, currentY );
 		vita2d_font_draw_text(commieSansL, 460, currentY + 30 , RGBA8(255,255,255,255), 26.0f, GetApp(i)->app_name.c_str());
 		vita2d_font_draw_text(commieSansL, 460, currentY + 50 , RGBA8(255,255,255,255), 18.0f, GetApp(i)->short_description.c_str());
-		if(appEntries[i].icon != NULL){
-			vita2d_draw_texture_scale(appEntries[i].icon, 250, currentY + 20, 0.5f, 0.5f);
+		bool trylock = lockloading[i].try_lock();
+		if(trylock == false){
+
+		}else{
+			if(appEntries[i].icon != NULL){
+				vita2d_draw_texture_scale(appEntries[i].icon, 250, currentY + 20, 0.5f, 0.5f);
+			}
+			lockloading[i].unlock();
 		}
 	}
 

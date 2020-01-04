@@ -28,7 +28,10 @@
 #include "./headgen.h"
 #include "./zip.hpp"
 
-int _newlib_heap_size_user = 128 * 1024 * 1024;
+extern "C" {
+   int _newlib_heap_size_user = 128 * 1024 * 1024;
+}
+
 
 VitaPad vitaPad;
 
