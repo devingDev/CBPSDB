@@ -93,6 +93,14 @@ const char* COPYRIGHT = " 2020 by CBPS";
 
 
 int main(int argc, char *argv[]) {
+
+    SceKernelFreeMemorySizeInfo freememoryStart;
+    freememoryStart.size = sizeof(freememoryStart);
+    sceKernelGetFreeMemorySize(&freememoryStart);
+    SceKernelFreeMemorySizeInfo freememoryCurrent;
+    freememoryCurrent.size = sizeof(freememoryCurrent);
+    sceKernelGetFreeMemorySize(&freememoryCurrent);
+
 	//int loadedFonts = loadFonts();
   	sceIoMkdir( "ux0:data/cbps/" , 0777);
   	sceIoMkdir( "ux0:data/cbps/icons/" , 0777);
@@ -130,7 +138,7 @@ int main(int argc, char *argv[]) {
 	vita2d_font * commieSans = vita2d_load_font_file("app0:assets/LDFCOMMIUNISMSANS.ttf");
 
 	while(1){
-
+    	sceKernelGetFreeMemorySize(&freememoryCurrent);
 		vita2d_start_drawing();
 		vita2d_clear_screen();
 		
@@ -162,6 +170,9 @@ int main(int argc, char *argv[]) {
 		vita2d_font_draw_text(commieSans, 480, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Submit / Enter");
 		vita2d_font_draw_text(commieSans, 730, DISPLAY_HEIGHT - 6, RGBA8(0xED,0x3E,0x19,255), 13.0f, "Go back / Cancel");
 
+		vita2d_font_draw_textf(commieSans, 8, DISPLAY_HEIGHT - 64, RGBA8(255,255,255,255), 24.0f, "Start   free memory: %X %X %X\n", freememoryStart.size_user, freememoryStart.size_phycont, freememoryStart.size_cdram);
+		vita2d_font_draw_textf(commieSans, 8, DISPLAY_HEIGHT - 32, RGBA8(255,255,255,255), 24.0f, "Current free memory: %X %X %X\n", freememoryCurrent.size_user, freememoryCurrent.size_phycont, freememoryCurrent.size_cdram);
+
 
 		vita2d_end_drawing();
 		vita2d_swap_buffers();
@@ -175,7 +186,7 @@ int main(int argc, char *argv[]) {
 		}else if(vitaPad.up){
 			move = -1;
 		}
-		move *= 5;
+		move *= 15;
 		do_checks_after_draw(move);
 	}
 	

@@ -338,6 +338,7 @@ void end_app_list(){
 	for(int i = 0; i < appEntries.size(); i++){
 		if(appEntries[i].icon != NULL){
 			vita2d_free_texture(appEntries[i].icon);
+			appEntries[i].icon = NULL;
 		}
 	}
 	vita2d_free_texture(bar);
