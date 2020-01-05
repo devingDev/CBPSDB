@@ -104,6 +104,7 @@ add_executable(${PROJECT_NAME}
   src/apps.cpp
   src/draw_app_list.cpp
   src/draw_side_menu.cpp
+  src/log.cpp
   src/main.cpp
 )
 
