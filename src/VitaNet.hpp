@@ -10,6 +10,8 @@
 #include <string>
 #include <string.h>
 
+#define BASE_URL "http://217.61.5.187/"
+
 class VitaNet{
 	
 	
